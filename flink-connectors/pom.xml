@@ -13,6 +13,9 @@
     <packaging>pom</packaging>
     <modules>
         <module>predefined-sources</module>
+        <module>file-connector</module>
+        <module>user-defined-source</module>
+        <module>kafka-connector</module>
     </modules>
 
     <dependencies>
