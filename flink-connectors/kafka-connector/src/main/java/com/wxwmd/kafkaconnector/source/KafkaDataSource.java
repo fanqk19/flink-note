@@ -1,9 +1,8 @@
 package com.wxwmd.kafkaconnector.source;
 
+import com.wxwmd.kafkaconnector.source.util.CarDeserializationSchema;
 import com.wxwmd.util.model.Car;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
-import org.apache.flink.api.common.functions.MapFunction;
-import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.connector.kafka.source.KafkaSource;
 import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer;
 import org.apache.flink.streaming.api.datastream.DataStream;
@@ -25,21 +24,15 @@ public class KafkaDataSource {
     }
 
     static DataStream<Car> readFromKafka(StreamExecutionEnvironment env, String topic, String consumerGroup){
-        KafkaSource<String> source = KafkaSource.<String>builder()
+        KafkaSource<Car> source = KafkaSource.<Car>builder()
                 .setBootstrapServers("ubuntu:9092")
                 .setTopics(topic)
                 .setGroupId(consumerGroup)
                 .setStartingOffsets(OffsetsInitializer.earliest())
-                .setValueOnlyDeserializer(new SimpleStringSchema())
+                .setValueOnlyDeserializer(new CarDeserializationSchema())
                 .build();
 
-        DataStreamSource<String> kafkaSource = env.fromSource(source, WatermarkStrategy.noWatermarks(), "Kafka Source");
-
-        DataStream<Car> carDataStream = kafkaSource.map((MapFunction<String, Car>) str->{
-            String[] props = str.split(",");
-            Car car = new Car(props[0], props[1], Double.parseDouble(props[2]));
-            return car;
-        });
+        DataStreamSource<Car> carDataStream = env.fromSource(source, WatermarkStrategy.noWatermarks(), "Kafka Source");
 
         return carDataStream;
     }
