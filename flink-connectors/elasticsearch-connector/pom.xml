@@ -3,29 +3,25 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
-        <artifactId>flink-coding</artifactId>
+        <artifactId>flink-connectors</artifactId>
         <groupId>com.wxwmd</groupId>
         <version>1.0</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>flink-connectors</artifactId>
-    <packaging>pom</packaging>
-    <modules>
-        <module>predefined-sources</module>
-        <module>file-connector</module>
-        <module>user-defined-source</module>
-        <module>kafka-connector</module>
-        <module>elasticsearch-connector</module>
-    </modules>
+    <artifactId>elasticsearch-connector</artifactId>
+
+    <properties>
+        <maven.compiler.source>8</maven.compiler.source>
+        <maven.compiler.target>8</maven.compiler.target>
+    </properties>
 
     <dependencies>
         <dependency>
-            <groupId>com.wxwmd</groupId>
-            <artifactId>util</artifactId>
-            <version>1.0</version>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-connector-elasticsearch7</artifactId>
+            <version>${flink.version}</version>
         </dependency>
     </dependencies>
-
 
 </project>

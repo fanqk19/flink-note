@@ -14,15 +14,9 @@ flink的source可以分为以下三类：
       - 🚀 `predefined-sources`
 ---
 2. flink提供的连接器组件：
-   - 想要从这类sources中读取数据流需要引入依赖。
-   例如为了支持从kafka等外部系统中进行读取、写入，我们需要先导入maven依赖：
-    ```
-    <dependency>
-        <groupId>org.apache.flink</groupId>
-        <artifactId>flink-connector-kafka_2.11</artifactId>
-        <version>1.14.4</version>
-    </dependency>
-    ```
+   - flink目前支持从kafka，elasticsearch等外部系统进行读取或写入，这部分的官方文档在[flink connector](https://nightlies.apache.org/flink/flink-docs-release-1.15/zh/docs/connectors/datastream/overview/),目前flink支持的外部系统有：
+       
+
    - 本项目中对应的模块是：
      - 🚀 `file-connector`
      - 🚀 `kafka-connector`

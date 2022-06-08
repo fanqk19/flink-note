@@ -12,7 +12,7 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 
 /**
  * @author wxwmd
- * @description
+ * @description 从美国kafka topic中读取元素作为data source
  */
 public class KafkaDataSource {
     public static void main(String[] args) throws Exception {
