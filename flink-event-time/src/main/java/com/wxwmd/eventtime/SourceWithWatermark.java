@@ -1,5 +1,6 @@
 package com.wxwmd.eventtime;
 
+import com.wxwmd.eventtime.util.UserEventDeserializationSchema;
 import com.wxwmd.util.model.UserEvent;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
@@ -17,25 +18,24 @@ public class SourceWithWatermark {
     public static void main(String[] args) throws Exception {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
-
+        getSourceWithWatermark(env);
 
         env.execute();
     }
 
-//    static DataStream<UserEvent> getSourceWithWatermark(StreamExecutionEnvironment env){
-//        String topic = "user-event";
-//        String consumerGroup = "";
-//
-//        KafkaSource<String> source = KafkaSource.<String>builder()
-//                .setBootstrapServers("ubuntu:9092")
-//                .setTopics(topic)
-//                .setGroupId(consumerGroup)
-//                .setStartingOffsets(OffsetsInitializer.earliest())
-//                .setValueOnlyDeserializer(new SimpleStringSchema())
-//                .build();
-//
-//        DataStreamSource<String> kafkaSource = env.fromSource(source, WatermarkStrategy.noWatermarks(), "Kafka Source");
-//    }
+    static void getSourceWithWatermark(StreamExecutionEnvironment env){
+        String topic = "user-event";
+        String consumerGroup = "";
 
+        KafkaSource<UserEvent> source = KafkaSource.<UserEvent>builder()
+                .setBootstrapServers("ubuntu:9092")
+                .setTopics(topic)
+                .setGroupId(consumerGroup)
+                .setStartingOffsets(OffsetsInitializer.earliest())
+                .setValueOnlyDeserializer(new UserEventDeserializationSchema())
+                .build();
 
+        DataStreamSource<UserEvent> kafkaSource = env.fromSource(source, WatermarkStrategy.noWatermarks(), "Kafka Source");
+        kafkaSource.print();
+    }
 }
