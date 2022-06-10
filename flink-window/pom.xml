@@ -9,7 +9,8 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>flink-event-time</artifactId>
+    <artifactId>flink-window</artifactId>
+
 
     <dependencies>
         <dependency>

@@ -1,11 +1,9 @@
-package com.wxwmd.eventtime.util;
+package com.wxwmd.window.util;
 
 import com.wxwmd.util.model.UserAction;
 import com.wxwmd.util.model.UserEvent;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-
-import java.io.IOException;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 

@@ -25,6 +25,6 @@ flink的source可以分为以下三类：
 3. 自定义dataSource 
    - 有时候我们想要自定义如何生成DataStream，这时候就需要自定义DataSource。flink在1.10之前我们只需要继承`SourceFunction`，重写其`run`方法就可以自定义DataSource，但是这种
 方式具有一些弊端，在1.10之后，flink重构了自定义DataSource的接口：
-![img.png](../images/img.png)
+![img.png](../images/flink-connectors/img.png)
    - 项目中对应的模块是：
      - 🚀 `user-defined-source`

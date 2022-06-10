@@ -10,7 +10,7 @@
     <version>1.0</version>
     <modules>
         <module>flink-basic</module>
-        <module>flink-event-time</module>
+        <module>flink-window</module>
         <module>flink-fault-tolerance</module>
         <module>flink-state</module>
         <module>flink-connectors</module>
