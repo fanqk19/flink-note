@@ -15,6 +15,7 @@
         <module>flink-state</module>
         <module>flink-connectors</module>
         <module>util</module>
+        <module>flink-libraries</module>
     </modules>
 
     <properties>
@@ -55,6 +56,8 @@
             <version>1.18.22</version>
             <scope>provided</scope>
         </dependency>
-
     </dependencies>
+
+
+
 </project>

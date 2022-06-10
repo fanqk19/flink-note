@@ -12,6 +12,7 @@
     <artifactId>flink-window</artifactId>
 
 
+
     <dependencies>
         <dependency>
             <groupId>com.wxwmd</groupId>
