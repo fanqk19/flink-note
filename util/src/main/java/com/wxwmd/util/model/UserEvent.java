@@ -9,15 +9,15 @@ import lombok.Data;
 @Data
 public class UserEvent {
     String userName;
-    UserAction action;
+    UserAction userAction;
     Long timeStamp;
 
     public UserEvent() {
     }
 
-    public UserEvent(String userName, UserAction action, Long timeStamp) {
+    public UserEvent(String userName, UserAction userAction, Long timeStamp) {
         this.userName = userName;
-        this.action = action;
+        this.userAction = userAction;
         this.timeStamp = timeStamp;
     }
 }

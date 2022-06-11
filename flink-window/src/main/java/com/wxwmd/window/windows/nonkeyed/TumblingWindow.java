@@ -1,11 +1,12 @@
-package com.wxwmd.window.windows;
+package com.wxwmd.window.windows.nonkeyed;
 
-import com.wxwmd.util.model.UserAction;
+import com.wxwmd.util.model.Action;
 import com.wxwmd.util.model.UserEvent;
 import org.apache.flink.api.common.functions.RichAggregateFunction;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.ProcessFunction;
 import org.apache.flink.streaming.api.functions.windowing.ProcessAllWindowFunction;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.time.Time;
@@ -13,10 +14,11 @@ import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.util.Collector;
 
 import static com.wxwmd.window.watermark.AssignWatermark.getFileStreamWithWatermark;
+import static com.wxwmd.window.watermark.AssignWatermark.getSocketStreamWithWatermark;
 
 /**
  * @author wxwmd
- * @description 滚动窗口
+ * @description nonkeyed stream滚动窗口
  * 演示如何计算每个滚动窗口内有多少个登录事件
  */
 public class TumblingWindow {
@@ -25,7 +27,8 @@ public class TumblingWindow {
         env.setParallelism(2);
 
         // 得到带有事件时间和watermark的source流
-        DataStream<UserEvent> source = getFileStreamWithWatermark(env);
+        // DataStream<UserEvent> source = getFileStreamWithWatermark(env);
+        DataStream<UserEvent> source = getSocketStreamWithWatermark(env, "localhost", 12345);
 
         DataStream<Object> loginCountStream = loginCount(source);
 
@@ -71,7 +74,7 @@ public class TumblingWindow {
 
             int count = 0;
             for (UserEvent userEvent : elements) {
-                if (userEvent.getAction().equals(UserAction.LOGIN)) {
+                if (userEvent.getUserAction().getAction().equals(Action.LOGIN)) {
                     count += 1;
                 }
             }
@@ -103,7 +106,7 @@ public class TumblingWindow {
          */
         @Override
         public Integer add(UserEvent value, Integer accumulator) {
-            if (value.getAction().equals(UserAction.LOGIN)){
+            if (value.getUserAction().getAction().equals(Action.LOGIN)){
                 return accumulator+1;
             }
             return accumulator;

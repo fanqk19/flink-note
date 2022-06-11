@@ -1,5 +1,6 @@
 package com.wxwmd.window.watermark;
 
+import com.wxwmd.util.model.Action;
 import com.wxwmd.util.model.UserAction;
 import com.wxwmd.util.model.UserEvent;
 import org.apache.flink.api.common.eventtime.*;
@@ -12,6 +13,7 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 /**
  * @author wxwmd
  * @description 在进行了一些变换之后分配timestamp和watermark
+ *
  */
 public class AssignWatermark {
     public static void main(String[] args) throws Exception {
@@ -23,9 +25,31 @@ public class AssignWatermark {
         env.execute();
     }
 
+    /**
+     * 从本地文件中得到带有timestamp和watermark的data source
+     * @param env 环境
+     * @return data source
+     */
     public static DataStream<UserEvent> getFileStreamWithWatermark(StreamExecutionEnvironment env){
         String filePath = "flink-window/src/main/resources/event.txt";
         DataStreamSource<String> source = env.readTextFile(filePath);
+
+        SingleOutputStreamOperator<UserEvent> userEventStream = source.map(new UserEventMapFunction())
+                .assignTimestampsAndWatermarks(new UserEventWatermarkStrategy());
+
+        return userEventStream;
+    }
+
+    /**
+     * 从socket中读到data source
+     * @param env 环境
+     * @return data source
+     *
+     * linux下打开端口的方法 nc -lk 12345
+     * windows需要先安装netcat ，然后nc -l -p 12345
+     */
+    public static DataStream<UserEvent> getSocketStreamWithWatermark(StreamExecutionEnvironment env, String host, int port){
+        DataStreamSource<String> source = env.socketTextStream(host, port);
 
         SingleOutputStreamOperator<UserEvent> userEventStream = source.map(new UserEventMapFunction())
                 .assignTimestampsAndWatermarks(new UserEventWatermarkStrategy());
@@ -43,15 +67,15 @@ public class AssignWatermark {
             String actionStr = props[1];
             switch (actionStr){
                 case "LOGIN":{
-                    userAction = UserAction.LOGIN;
+                    userAction = new UserAction(Action.LOGIN);
                     break;
                 }
                 case "BUY":{
-                    userAction = UserAction.BUY;
+                    userAction = new UserAction(Action.BUY);
                     break;
                 }
                 case "LOGOUT":{
-                    userAction = UserAction.LOGOUT;
+                    userAction = new UserAction(Action.LOGOUT);
                     break;
                 }
                 default:{

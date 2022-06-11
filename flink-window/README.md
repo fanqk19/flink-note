@@ -74,6 +74,22 @@ WatermarkStrategy
         .withIdleness(Duration.ofMinutes(1));
 ```
 >这样的话，如果一个partition超过一分钟没来数据，我们就会把其标注为空闲状态，其不会对下游watermark造成影响。
+> 
+---
+> **watermark的传递策略**
+> 
+> 上游算子的watermark在计算中需要传递给下游算子，传递规则是：下游算子的watermark是上游算子中watermark最小的那一个。
+> 这种传递规则是很好理解的，因为watermark标志的是再次之前的数据已经完全到来，所以上有算子中最小的watermark代表着所有上游算子的共识，
+> 因为所有上游算子都认为在这个watermark之前的数据已经全部到来了。
+> watermark的传递规则有时候会导致一些令人费解的现象：比如在一个并行度为3的flink程序中，我们先从kafka中读取source，
+> 然后进行shuffle做一些计算，最后将结果sink出去。假设有一个source的watermark拖后腿了，那么三个计算算子的watermark
+> 都会滞后，可能会导致窗口不被fire，因此，sink中将不输出任何结果。
+> 在`flink-window/src/main/java/com/wxwmd/window/watermark/WatermarkPass.java`中，展示了watermark
+> 传递的例子。
+
+![](../images/flink-window/parallel_kafka_watermarks.svg)
+
+
 ---
 ## 2. flink window的分类及其应用
  > 窗口（Window）是处理无界流的关键所在。窗口可以将数据流装入大小有限的“桶”中，再对每个“桶”加以处理。 本文的重心将放在 Flink 如何进行窗口操作以及开发者如何尽可能地利用 Flink 所提供的功能。
@@ -166,14 +182,17 @@ input
     .window(TumblingEventTimeWindows.of(Time.days(1), Time.hours(-8)))
     .<windowed transformation>(<window function>);
     
-// 常用的windowed transformation
+// 常用的window function
 aggregate(AggregateFunction<T, ACC, R> function)
 如其函数名所示，这个函数的作用是将一个窗口内的所有元素经过某种转换（自定义），之后得到一个结果值
 这个函数是增量计算的，也就是说来窗口内来一个元素计算一次，完了窗口触发后在结果流中产生一个结果
 
 process(ProcessFunction<T, R> processFunction)
 这个函数就比aggregate更灵活一些，其在一个窗口应用这个函数可以产生一个或多个结果
+
 ```
+windows function的解析详见 [windows function详解](https://blog.csdn.net/cobracanary/article/details/125222975)
+
 > 我看窗口的时候一直有个疑问： 我只设置了窗口的尺寸，那么窗口的开始时间到结束时间是怎么产生的呢？比方说我设置了1h的窗口，那么产生的窗口是北京时间12:00~13:00还是12:30~13:30呢？
 > 
 > 如上一个例子所示，滚动窗口的 assigners 也可以传入可选的 offset 参数。

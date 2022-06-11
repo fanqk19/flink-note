@@ -1,5 +1,6 @@
 package com.wxwmd.window.util;
 
+import com.wxwmd.util.model.Action;
 import com.wxwmd.util.model.UserAction;
 import com.wxwmd.util.model.UserEvent;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
@@ -21,15 +22,15 @@ public class UserEventDeserializationSchema implements DeserializationSchema<Use
         String actionStr = props[1];
         switch (actionStr){
             case "LOGIN":{
-                userAction = UserAction.LOGIN;
+                userAction = new UserAction(Action.LOGIN);
                 break;
             }
             case "BUY":{
-                userAction = UserAction.BUY;
+                userAction = new UserAction(Action.BUY);
                 break;
             }
-            case "LogOut":{
-                userAction = UserAction.LOGOUT;
+            case "LOGOUT":{
+                userAction = new UserAction(Action.LOGOUT);
                 break;
             }
             default:{

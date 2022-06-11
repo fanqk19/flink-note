@@ -18,18 +18,16 @@ public class SourceWithWatermark {
     public static void main(String[] args) throws Exception {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
-        DataStream<UserEvent> source = getSourceWithWatermark(env);
+        DataStream<UserEvent> source = getKafkaSourceWithWatermark(env, "ubuntu:9092", "user-event", "");
         source.print("source with timestamp and watermark: ");
 
         env.execute();
     }
 
-    static DataStream<UserEvent> getSourceWithWatermark(StreamExecutionEnvironment env){
-        String topic = "user-event";
-        String consumerGroup = "";
+    public static DataStream<UserEvent> getKafkaSourceWithWatermark(StreamExecutionEnvironment env, String bootstrapServers, String topic, String consumerGroup){
 
         KafkaSource<UserEvent> source = KafkaSource.<UserEvent>builder()
-                .setBootstrapServers("ubuntu:9092")
+                .setBootstrapServers(bootstrapServers)
                 .setTopics(topic)
                 .setGroupId(consumerGroup)
                 .setStartingOffsets(OffsetsInitializer.earliest())
