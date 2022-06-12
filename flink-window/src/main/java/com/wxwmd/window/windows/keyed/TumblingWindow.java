@@ -59,6 +59,7 @@ public class TumblingWindow {
      */
     static DataStream<String> countEventByKeyedWindow(DataStream<UserEvent> source) {
         SingleOutputStreamOperator<String> countStream = source.keyBy(UserEvent::getUserAction)
+                // .window(TumblingEventTimeWindows.of(Time.milliseconds(10),Time.milliseconds(5))) 设置5ms的偏移量
                 .window(TumblingEventTimeWindows.of(Time.milliseconds(10L)))
                 .process(new CountEventProcessWindow());
 

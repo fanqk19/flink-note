@@ -205,3 +205,90 @@ windows function的解析详见 [windows function详解](https://blog.csdn.net/c
 > 因为中国是东八区嘛，如果不设置这个offest，那么你生成的窗口将是`t-1:8:00 ~ t:8:00`，对于一些日活等任务来说，这样就统计错了。
 > 
 ---
+### 滑动窗口（Sliding Windows）
+> 与滚动窗口类似，滑动窗口的 assigner 分发元素到指定大小的窗口，窗口大小通过 window size 参数设置。 滑动窗口需要一个额外的滑动距离（window slide）参数来控制生成新窗口的频率。 因此，如果 slide 小于窗口大小，滑动窗口可以允许窗口重叠。这种情况下，一个元素可能会被分发到多个窗口。
+> 
+> 比如说，你设置了大小为 10 分钟，滑动距离 5 分钟的窗口，你会在每 5 分钟得到一个新的窗口， 里面包含之前 10 分钟到达的数据（如下图所示）。
+> 
+![](../images/flink-window/sliding-windows.svg)
+```
+// 下面的代码展示如何使用华东窗口
+DataStream<T> input = ...;
+
+// 滑动 event-time 窗口
+input
+.keyBy(<key selector>)
+.window(SlidingEventTimeWindows.of(Time.seconds(10), Time.seconds(5)))
+.<windowed transformation>(<window function>);
+
+// 滑动 processing-time 窗口
+input
+.keyBy(<key selector>)
+.window(SlidingProcessingTimeWindows.of(Time.seconds(10), Time.seconds(5)))
+.<windowed transformation>(<window function>);
+
+// 滑动 processing-time 窗口，偏移量为 -8 小时
+input
+.keyBy(<key selector>)
+.window(SlidingProcessingTimeWindows.of(Time.hours(12), Time.hours(1), Time.hours(-8)))
+.<windowed transformation>(<window function>);
+```
+---
+### 会话窗口（Session Windows）
+> 会话窗口的 assigner 会把数据按活跃的会话分组。 与滚动窗口和滑动窗口不同，会话窗口不会相互重叠，且没有固定的开始或结束时间。 会话窗口在一段时间没有收到数据之后会关闭，即在一段不活跃的间隔之后。 会话窗口的 assigner 可以设置固定的会话间隔（session gap）或 用 session gap extractor 函数来动态地定义多长时间算作不活跃。 当超出了不活跃的时间段，当前的会话就会关闭，并且将接下来的数据分发到新的会话窗口。
+> 
+> 固定间隔可以使用 Time.milliseconds(x)、Time.seconds(x)、Time.minutes(x) 等来设置。
+>
+> 动态间隔可以通过实现 SessionWindowTimeGapExtractor 接口来指定。
+> 
+> 会话窗口并没有固定的开始或结束时间，所以它的计算方法与滑动窗口和滚动窗口不同。在 Flink 内部，会话窗口的算子会为每一条数据创建一个窗口， 然后将距离不超过预设间隔的窗口合并。 想要让窗口可以被合并，会话窗口需要拥有支持合并的 Trigger 和 Window Function， 比如说 ReduceFunction、AggregateFunction 或 ProcessWindowFunction。
+> 
+![](../images/flink-window/session-windows.svg)
+```
+// 下面的代码展示了如何使用会话窗口
+DataStream<T> input = ...;
+
+// 设置了固定间隔的 event-time 会话窗口
+input
+.keyBy(<key selector>)
+.window(EventTimeSessionWindows.withGap(Time.minutes(10)))
+.<windowed transformation>(<window function>);
+
+// 设置了动态间隔的 event-time 会话窗口
+input
+.keyBy(<key selector>)
+.window(EventTimeSessionWindows.withDynamicGap((element) -> {
+// 决定并返回会话间隔
+}))
+.<windowed transformation>(<window function>);
+
+// 设置了固定间隔的 processing-time session 窗口
+input
+.keyBy(<key selector>)
+.window(ProcessingTimeSessionWindows.withGap(Time.minutes(10)))
+.<windowed transformation>(<window function>);
+
+// 设置了动态间隔的 processing-time 会话窗口
+input
+.keyBy(<key selector>)
+.window(ProcessingTimeSessionWindows.withDynamicGap((element) -> {
+// 决定并返回会话间隔
+}))
+.<windowed transformation>(<window function>);
+```
+
+---
+### 全局窗口（Global Windows）
+> 全局窗口的 assigner 将拥有相同 key 的所有数据分发到一个全局窗口。 这样的窗口模式仅在你指定了自定义的 trigger 时有用。 否则，计算不会发生，因为全局窗口没有天然的终点去触发其中积累的数据。
+> 
+
+![](../images/flink-window/non-windowed.svg)
+```
+// 下面的代码展示了如何使用全局窗口
+DataStream<T> input = ...;
+
+input
+.keyBy(<key selector>)
+.window(GlobalWindows.create())
+.<windowed transformation>(<window function>);
+```
