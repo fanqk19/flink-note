@@ -5,8 +5,6 @@ import com.wxwmd.util.model.UserEvent;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.functions.KeyedProcessFunction;
-import org.apache.flink.streaming.api.functions.ProcessFunction;
 import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.time.Time;
@@ -15,7 +13,6 @@ import org.apache.flink.util.Collector;
 
 import static com.wxwmd.window.watermark.AssignWatermark.getFileStreamWithWatermark;
 import static com.wxwmd.window.watermark.AssignWatermark.getSocketStreamWithWatermark;
-import static com.wxwmd.window.watermark.SourceWithWatermark.getKafkaSourceWithWatermark;
 
 
 /**
@@ -23,7 +20,20 @@ import static com.wxwmd.window.watermark.SourceWithWatermark.getKafkaSourceWithW
  * @description keyed stream滚动窗口
  * 先将事件流 keyby(事件类型) 得到{LOGIN,BUY,LOGOUT}三个keyed stream
  * 再开窗计算每20ms内每个事件的发生个数
+ * 代码的详细讲解：https://blog.csdn.net/cobracanary/article/details/125234192
  *
+ * 使用方法：
+ * 打开端口
+ * 在端口中逐次输入：
+ * bob,LOGIN,1654688058
+ * burg,LOGIN,1654688058
+ * bob,BUY,1654688064
+ * doris,LOGIN,1654688081
+ * burg,BUY,1654688084
+ * doris,LOGOUT,1654688089
+ * wxwmd,LOGIN,1654688100
+ * duck,LOGIN,1654688096
+ * note：这是窗口聚合计算，所以不是输入一条就输出一条的
  *
  */
 public class TumblingWindow {
@@ -55,6 +65,9 @@ public class TumblingWindow {
         return countStream;
     }
 
+    /**
+     * 在一个keyed stream中的window，去数这个window里面由多少个事件
+     */
     static class CountEventProcessWindow extends ProcessWindowFunction<UserEvent, String, UserAction, TimeWindow>{
 
         @Override

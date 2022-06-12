@@ -14,6 +14,7 @@ import static com.wxwmd.window.watermark.AssignWatermark.getSocketStreamWithWate
 /**
  * @author wxwmd
  * @description 展示watermark从上游向下游传递的现象
+ * 代码的详细讲解： https://blog.csdn.net/cobracanary/article/details/125237966
  *
  * 使用方法：
  * nc启动12345端口后
@@ -51,7 +52,7 @@ public class WatermarkPass {
 
     static class GetWatermarkProcessFunction extends KeyedProcessFunction<UserAction, UserEvent, String> {
         @Override
-        public void processElement(UserEvent userEvent, KeyedProcessFunction<UserAction, UserEvent, String>.Context ctx, Collector<String> out) throws Exception {
+        public void processElement(UserEvent userEvent, KeyedProcessFunction<UserAction, UserEvent, String>.Context ctx, Collector<String> out) {
             long watermark = ctx.timerService().currentWatermark();
             String result = String.format("user event: %s, watermark: %d", userEvent.toString(), watermark);
             out.collect(result);
