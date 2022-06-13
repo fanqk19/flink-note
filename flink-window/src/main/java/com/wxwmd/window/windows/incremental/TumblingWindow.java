@@ -1,7 +1,8 @@
-package com.wxwmd.window.windows.keyed;
+package com.wxwmd.window.windows.incremental;
 
 import com.wxwmd.util.model.UserEvent;
-import com.wxwmd.window.util.CountFunction;
+import com.wxwmd.window.util.IncrementalCountAggregateFunction;
+import com.wxwmd.window.util.IncrementalCountFunction;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -14,9 +15,7 @@ import static com.wxwmd.window.watermark.AssignWatermark.getSocketStreamWithWate
 /**
  * @author wxwmd
  * @description keyed stream滚动窗口
- * 先将事件流 keyby(事件类型) 得到{LOGIN,BUY,LOGOUT}三个keyed stream
- * 再开窗计算每20ms内每个事件的发生个数
- * 代码的详细讲解：https://blog.csdn.net/cobracanary/article/details/125234192
+ * 与AggregateFunction结合，实现ProcessFunction增量计算
  *
  * 使用方法：
  * 打开端口
@@ -37,10 +36,9 @@ public class TumblingWindow {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.setParallelism(3);
 
-        //1. 使用socket作为data source
+        //使用socket作为data source
         DataStream<UserEvent> source = getSocketStreamWithWatermark(env, "localhost", 12345);
-        //2.  使用本地文件作为data source
-        //DataStream<UserEvent> source = getFileStreamWithWatermark(env);
+
         DataStream<String> countStream = countEventByTumblingWindow(source);
         countStream.print("event count ");
 
@@ -55,9 +53,8 @@ public class TumblingWindow {
      */
     static DataStream<String> countEventByTumblingWindow(DataStream<UserEvent> source) {
         SingleOutputStreamOperator<String> countStream = source.keyBy(UserEvent::getUserAction)
-                // .window(TumblingEventTimeWindows.of(Time.milliseconds(10),Time.milliseconds(5))) 设置5ms的偏移量
                 .window(TumblingEventTimeWindows.of(Time.milliseconds(10L)))
-                .process(new CountFunction());
+                .aggregate(new IncrementalCountAggregateFunction(), new IncrementalCountFunction());
 
         return countStream;
     }

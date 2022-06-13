@@ -1,7 +1,7 @@
 # flink-window模块
 包含的知识点有：
-## 1. flink事件时间的生成，watermark的生成 [watermark生成](https://nightlies.apache.org/flink/flink-docs-release-1.15/zh/docs/dev/datastream/event-time/generating_watermarks/)
-> ##### 概述
+## 1. 事件事件和watermark
+### 概述
 >为了使用事件时间语义，Flink 应用程序需要知道事件时间戳对应的字段，意味着数据流中的每个元素都需要拥有可分配的事件时间戳。其通常通过使用 TimestampAssigner API 从元素中的某个字段去访问/提取时间戳。
 >
 > 时间戳的分配与 watermark 的生成是齐头并进的，其可以告诉 Flink 应用程序事件时间的进度。其可以通过指定 WatermarkGenerator 来配置 watermark 的生成方式。
@@ -33,7 +33,7 @@ WatermarkStrategy
 
 ```
 ---
-> ##### 使用 Watermark 策略
+### 使用 Watermark 策略
 > WatermarkStrategy 可以在 Flink 应用程序中的两处使用，第一种是直接在数据源上使用，第二种是直接在非数据源的操作之后使用。
 > 
 > 第一种方式相比会更好，因为数据源可以利用 watermark 生成逻辑中有关分片/分区（shards/partitions/splits）的信息。使用这种方式，数据源通常可以更精准地跟踪 watermark，整体 watermark 生成将更精确。直接在源上指定 WatermarkStrategy 意味着你必须使用特定数据源接口，参阅 Watermark 策略与 Kafka 连接器以了解如何使用 Kafka Connector，以及有关每个分区的 watermark 是如何生成以及工作的。
@@ -58,7 +58,7 @@ withTimestampsAndWatermarks
 ```
 
 ---
-> ##### 处理空闲数据源
+### 处理空闲数据源
 > 如果数据源（比如kafka）中的某一个分区/分片在一段时间内未发送事件数据，则意味着 WatermarkGenerator 也不会获得任何新数据去生成 watermark。
 > 我们称这类数据源为空闲输入或空闲源。
 > 在这种情况下，当某些其他分区仍然发送事件数据的时候就会出现问题。
@@ -138,7 +138,7 @@ Keyed 和 Non-Keyed Windows
 > 
 ---
 
-## Window Assigners（各种窗口）
+## 3. Window Assigners（各种窗口）
 > 指定了你的 stream 是否为 keyed 之后，下一步就是定义 window assigner。
 > 
 > Window assigner 定义了 stream 中的元素如何被分发到各个窗口。 
@@ -182,7 +182,7 @@ input
     .window(TumblingEventTimeWindows.of(Time.days(1), Time.hours(-8)))
     .<windowed transformation>(<window function>);
     
-// 常用的window function
+// 常用的window function在文档后面会有详细介绍
 aggregate(AggregateFunction<T, ACC, R> function)
 如其函数名所示，这个函数的作用是将一个窗口内的所有元素经过某种转换（自定义），之后得到一个结果值
 这个函数是增量计算的，也就是说来窗口内来一个元素计算一次，完了窗口触发后在结果流中产生一个结果
@@ -191,7 +191,7 @@ process(ProcessFunction<T, R> processFunction)
 这个函数就比aggregate更灵活一些，其在一个窗口应用这个函数可以产生一个或多个结果
 
 ```
-windows function的解析详见 [windows function详解](https://blog.csdn.net/cobracanary/article/details/125222975)
+
 
 > 我看窗口的时候一直有个疑问： 我只设置了窗口的尺寸，那么窗口的开始时间到结束时间是怎么产生的呢？比方说我设置了1h的窗口，那么产生的窗口是北京时间12:00~13:00还是12:30~13:30呢？
 > 
@@ -291,4 +291,192 @@ input
 .keyBy(<key selector>)
 .window(GlobalWindows.create())
 .<windowed transformation>(<window function>);
+```
+---
+## 4. 窗口函数（Window Functions）
+> 定义了 window assigner 之后，我们需要指定当窗口触发之后，我们如何计算每个窗口中的数据， 这就是 window function 的职责了。关于窗口如何触发，详见 triggers。
+> 
+> 窗口函数有三种：ReduceFunction、AggregateFunction 或 ProcessWindowFunction。 前两者执行起来更高效（详见 State Size）因为 Flink 可以在每条数据到达窗口后 进行增量聚合（incrementally aggregate）。 而 ProcessWindowFunction 会得到能够遍历当前窗口内所有数据的 Iterable，以及关于这个窗口的 meta-information。
+> 
+> 使用 ProcessWindowFunction 的窗口转换操作没有其他两种函数高效，因为 Flink 在窗口触发前必须缓存里面的所有数据。 ProcessWindowFunction 可以与 ReduceFunction 或 AggregateFunction 合并来提高效率。 这样做既可以增量聚合窗口内的数据，又可以从 ProcessWindowFunction 接收窗口的 metadata。 我们接下来看看每种函数的例子。
+> 
+### ReduceFunction
+> ReduceFunction 指定两条输入数据如何合并起来产生一条输出数据，输入和输出数据的类型必须相同。 Flink 使用 ReduceFunction 对窗口中的数据进行增量聚合。
+> 
+```
+// ReduceFunction的使用
+DataStream<Tuple2<String, Long>> input = ...;
+
+input
+.keyBy(<key selector>)
+.window(<window assigner>)
+.reduce(new ReduceFunction<Tuple2<String, Long>>() {
+public Tuple2<String, Long> reduce(Tuple2<String, Long> v1, Tuple2<String, Long> v2) {
+return new Tuple2<>(v1.f0, v1.f1 + v2.f1);
+}
+});
+```
+
+### AggregateFunction
+> ReduceFunction 是 AggregateFunction 的特殊情况。 AggregateFunction 接收三个类型：输入数据的类型(IN)、累加器的类型（ACC）和输出数据的类型（OUT）。 输入数据的类型是输入流的元素类型，AggregateFunction 接口有如下几个方法： 把每一条元素加进累加器、创建初始累加器、合并两个累加器、从累加器中提取输出（OUT 类型）。我们通过下例说明。
+> 
+> 与 ReduceFunction 相同，Flink 会在输入数据到达窗口时直接进行增量聚合。
+> 
+```
+/**
+ * 输入是Tuple2<String, Long>，此AggregateFunction用来求f1的平均值。
+ * 累加器是Tuple2<Long, Long>类型的，f0计算总和，f1计算个数
+ */
+private static class AverageAggregate
+    implements AggregateFunction<Tuple2<String, Long>, Tuple2<Long, Long>, Double> {
+  @Override
+  public Tuple2<Long, Long> createAccumulator() {
+    return new Tuple2<>(0L, 0L);
+  }
+
+  @Override
+  public Tuple2<Long, Long> add(Tuple2<String, Long> value, Tuple2<Long, Long> accumulator) {
+    return new Tuple2<>(accumulator.f0 + value.f1, accumulator.f1 + 1L);
+  }
+
+  @Override
+  public Double getResult(Tuple2<Long, Long> accumulator) {
+    return ((double) accumulator.f0) / accumulator.f1;
+  }
+
+  @Override
+  public Tuple2<Long, Long> merge(Tuple2<Long, Long> a, Tuple2<Long, Long> b) {
+    return new Tuple2<>(a.f0 + b.f0, a.f1 + b.f1);
+  }
+}
+
+DataStream<Tuple2<String, Long>> input = ...;
+
+input
+    .keyBy(<key selector>)
+    .window(<window assigner>)
+    .aggregate(new AverageAggregate());
+
+```
+
+### ProcessWindowFunction
+> ProcessWindowFunction 有能获取包含窗口内所有元素的 Iterable， 以及用来获取时间和状态信息的 Context 对象，比其他窗口函数更加灵活。 ProcessWindowFunction 的灵活性是以性能和资源消耗为代价的， 因为窗口中的数据无法被增量聚合，而需要在窗口触发前缓存所有数据。
+> 
+> 使用ProcessWindowFunction在窗口聚合函数中我们可以获得窗口起始时间、结束事件、当前watermark等丰富的信息。
+> 
+```
+DataStream<Tuple2<String, Long>> input = ...;
+
+input
+  .keyBy(t -> t.f0)
+  .window(TumblingEventTimeWindows.of(Time.minutes(5)))
+  .process(new MyProcessWindowFunction());
+
+/* ... */
+
+public class MyProcessWindowFunction 
+    extends ProcessWindowFunction<Tuple2<String, Long>, String, String, TimeWindow> {
+
+  @Override
+  public void process(String key, Context context, Iterable<Tuple2<String, Long>> input, Collector<String> out) {
+    long count = 0;
+    for (Tuple2<String, Long> in: input) {
+      count++;
+    }
+    out.collect("Window: " + context.window() + "count: " + count);
+  }
+}
+```
+> 注意，使用 ProcessWindowFunction 完成简单的聚合任务是非常低效的。 接下来会说明如何将 ReduceFunction 或 AggregateFunction 与 ProcessWindowFunction 组合成既能增量聚合又能获得窗口额外信息的窗口函数。 
+> 
+### 增量聚合的 ProcessWindowFunction
+> ProcessWindowFunction 可以与 ReduceFunction 或 AggregateFunction 搭配使用， 使其能够在数据到达窗口的时候进行增量聚合。当窗口关闭时，ProcessWindowFunction 将会得到聚合的结果。 这样它就可以增量聚合窗口的元素并且从 ProcessWindowFunction 中获得窗口的元数据。
+> 
+> 在下面的例子中，我们可以看到，所谓增量聚合的ProcessWindowFunction，就是先使用ReduceFunction或AggregateFunction
+> 对窗口内的数据进行增量运算，在窗口被触发时，将结果传给ProcessWindowFunction，然后ProcessWindowFunction再在结果中
+> 加入一些信息，比如说窗口的时间范围、watermark等。
+> 
+#### 使用 ReduceFunction 增量聚合
+> 下例展示了如何将 ReduceFunction 与 ProcessWindowFunction 组合，返回窗口中的最小元素和窗口的开始时间。
+```
+DataStream<SensorReading> input = ...;
+
+input
+  .keyBy(<key selector>)
+  .window(<window assigner>)
+  .reduce(new MyReduceFunction(), new MyProcessWindowFunction());
+
+// Function definitions
+
+private static class MyReduceFunction implements ReduceFunction<SensorReading> {
+
+  public SensorReading reduce(SensorReading r1, SensorReading r2) {
+      return r1.value() > r2.value() ? r2 : r1;
+  }
+}
+
+private static class MyProcessWindowFunction
+    extends ProcessWindowFunction<SensorReading, Tuple2<Long, SensorReading>, String, TimeWindow> {
+
+  public void process(String key,
+                    Context context,
+                    Iterable<SensorReading> minReadings,
+                    Collector<Tuple2<Long, SensorReading>> out) {
+      // 因为之前已经reduce了，所以minReadings只有一个元素，就是最小值
+      SensorReading min = minReadings.iterator().next();
+      out.collect(new Tuple2<Long, SensorReading>(context.window().getStart(), min));
+  }
+}
+```
+
+#### 使用 AggregateFunction 增量聚合
+> 下例展示了如何将 AggregateFunction 与 ProcessWindowFunction 组合，计算平均值并与窗口对应的 key 一同输出。
+```
+DataStream<Tuple2<String, Long>> input = ...;
+
+input
+  .keyBy(<key selector>)
+  .window(<window assigner>)
+  .aggregate(new AverageAggregate(), new MyProcessWindowFunction());
+
+// Function definitions
+
+/**
+ * The accumulator is used to keep a running sum and a count. The {@code getResult} method
+ * computes the average.
+ */
+private static class AverageAggregate
+    implements AggregateFunction<Tuple2<String, Long>, Tuple2<Long, Long>, Double> {
+  @Override
+  public Tuple2<Long, Long> createAccumulator() {
+    return new Tuple2<>(0L, 0L);
+  }
+
+  @Override
+  public Tuple2<Long, Long> add(Tuple2<String, Long> value, Tuple2<Long, Long> accumulator) {
+    return new Tuple2<>(accumulator.f0 + value.f1, accumulator.f1 + 1L);
+  }
+
+  @Override
+  public Double getResult(Tuple2<Long, Long> accumulator) {
+    return ((double) accumulator.f0) / accumulator.f1;
+  }
+
+  @Override
+  public Tuple2<Long, Long> merge(Tuple2<Long, Long> a, Tuple2<Long, Long> b) {
+    return new Tuple2<>(a.f0 + b.f0, a.f1 + b.f1);
+  }
+}
+
+private static class MyProcessWindowFunction
+    extends ProcessWindowFunction<Double, Tuple2<String, Double>, String, TimeWindow> {
+
+  public void process(String key,
+                    Context context,
+                    Iterable<Double> averages,
+                    Collector<Tuple2<String, Double>> out) {
+      Double average = averages.iterator().next();
+      out.collect(new Tuple2<>(key, average));
+  }
+}
 ```
